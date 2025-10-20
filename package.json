@@ -1,0 +1,15 @@
+{
+  "name": "kp3_2",
+  "version": "1.0.0",
+  "description": "My first Electron app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "Andriy",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^38.3.0"
+  }
+}
