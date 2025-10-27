@@ -1,70 +1,50 @@
-async function createRoom() {
-  if (!this.newRoomName?.trim()) return;
-  try {
-    const res = await fetch('https://matrix.org/_matrix/client/r0/createRoom', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.accessToken}`
-      },
-      body: JSON.stringify({
-        preset: 'private_chat',
-        name: this.newRoomName.trim(),
-        invite: this.inviteUser ? [this.inviteUser.trim()] : []
-      })
+// sidebar/sidebar.js
+(function () {
+  const state = {
+    rooms: [
+      { roomId: '!demo1:server', name: 'General' },
+      { roomId: '!demo2:server', name: 'Development' }
+    ],
+    currentRoomId: '!demo1:server'
+  };
+
+  function renderRooms(host) {
+    const list = host.querySelector('#sidebar-list');
+    list.innerHTML = '';
+    state.rooms.forEach(r => {
+      const el = document.createElement('div');
+      el.className = 'sidebar__room' + (r.roomId === state.currentRoomId ? ' sidebar__room--active' : '');
+      el.textContent = r.name;
+      el.onclick = () => {
+        state.currentRoomId = r.roomId;
+        renderRooms(host);
+      };
+      list.appendChild(el);
     });
-    const data = await res.json();
-
-    if (data.room_id) {
-      this.newRoomId = data.room_id;
-      this.roomId = data.room_id;
-      this.messages = [];
-      this.lastSyncToken = '';
-      await this.fetchRoomsWithNames?.();
-      this.fetchMessages?.();
-      this.inviteUser = '';
-      alert(`Room ${this.newRoomName} created with ID: ${this.newRoomId}`);
-      this.newRoomName = '';
-    } else {
-      console.error('Create room failed:', data);
-      alert('Create room failed: ' + (data.error || 'Unknown error'));
-    }
-  } catch (e) {
-    console.error('Create room error:', e);
-    alert('Create room error: ' + e.message);
   }
-}
 
-async function fetchRoomsWithNames() {
-  if (!this.accessToken) return;
-  try {
-    const res = await fetch('https://matrix.org/_matrix/client/r0/joined_rooms', {
-      headers: { 'Authorization': `Bearer ${this.accessToken}` }
+  function attachActions(host) {
+    const input = host.querySelector('#sidebar-room-name');
+    const btn   = host.querySelector('#sidebar-create');
+    const info  = host.querySelector('#sidebar-created');
+
+    btn.addEventListener('click', () => {
+      const name = input.value.trim();
+      if (!name) return;
+      const roomId = '!' + Math.random().toString(36).slice(2);
+      state.rooms.push({ roomId, name });
+      state.currentRoomId = roomId;
+      renderRooms(host);
+      input.value = '';
+      info.textContent = 'Створено кімнату: ' + roomId;
+      setTimeout(() => info.textContent = '', 1500);
     });
-    const data = await res.json();
-
-    if (data.joined_rooms) {
-      const roomPromises = data.joined_rooms.map(async (roomId) => {
-        const nameRes = await fetch(
-          `https://matrix.org/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/state/m.room.name`,
-          { headers: { 'Authorization': `Bearer ${this.accessToken}` } }
-        );
-        const nameData = await nameRes.json();
-        return {
-          roomId,
-          name: nameData?.name || roomId
-        };
-      });
-
-      this.rooms = (await Promise.all(roomPromises))
-        .sort((a, b) => (a.name || a.roomId).localeCompare(b.name || b.roomId));
-
-      if (!this.roomId && this.rooms.length) {
-        this.roomId = this.rooms[0].roomId;
-        this.fetchMessages?.();
-      }
-    }
-  } catch (e) {
-    console.error('Fetch rooms error:', e);
   }
-}
+
+  window.Sidebar = {
+    init(hostEl) {
+      renderRooms(hostEl);
+      attachActions(hostEl);
+    }
+  };
+})();

@@ -1,4 +1,44 @@
-/* Sidebar component styles */
-.room-list li { padding: 8px; transition: background-color 0.2s; }
-.room-list li:hover { background-color: #e0e7ff; }
-.room-list li.active { background-color: #bfdbfe; font-weight: 500; }
+/* sidebar/sidebar.css — стилі лише для компоненту Sidebar */
+.sidebar-root { min-height: 200px; }
+
+.sidebar {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.sidebar__title { margin: 0 0 12px; font-size: 18px; }
+
+.sidebar__list { display: grid; gap: 6px; margin-bottom: 12px; }
+
+.sidebar__room {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+.sidebar__room:hover { background: #eef2ff; }
+.sidebar__room--active { background: #dbeafe; font-weight: 600; }
+
+.sidebar__new { margin-top: 8px; display: grid; gap: 8px; }
+.sidebar__label { font-size: 12px; color: #6b7280; }
+.sidebar__input {
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  outline: 0;
+}
+.sidebar__btn {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 8px;
+  font-weight: 600;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+.sidebar__btn:hover { background: #1d4ed8; }
+.sidebar__hint { font-size: 12px; color: #6b7280; }
+.sidebar__error { color: #b91c1c; background: #fee2e2; padding: 8px; border-radius: 8px; }

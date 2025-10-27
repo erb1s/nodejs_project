@@ -1,94 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Matrix Chat</title>
-  <!-- Libs згідно завдання -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/alpinejs" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Project-kp-2-5</title>
 
-  <!-- Підключення скриптів компонентів -->
-  <script src="./login/login.js"></script>
-  <script src="./sidebar/sidebar.js"></script>
+  <!-- ОКРЕМІ стилі сторінки -->
+  <link rel="stylesheet" href="./index.css" />
 
-  <!-- Окремі стилі для кожного компоненту -->
-  <link rel="stylesheet" href="./login/login.css">
-  <link rel="stylesheet" href="./sidebar/sidebar.css">
-
-  <!-- Базові стилі сторінки (дозволено в index.html) -->
-  <style>
-    .chat-container { min-height: 80vh; }
-    .sidebar { min-width: 250px; }
-    .chat-area { flex-grow: 1; }
-    .message-input { min-height: 80px; }
-  </style>
+  <!-- ОКРЕМІ стилі компонентів -->
+  <link rel="stylesheet" href="./sidebar/sidebar.css" />
+  <link rel="stylesheet" href="./login/login.css" />
 </head>
 
-<body class="bg-gray-100 flex items-center justify-center p-4">
-  <div x-data="chatApp()" class="chat-container bg-white rounded-lg shadow-lg flex w-full max-w-5xl">
-    <!-- Контейнер для сайдбару -->
-    <div id="sidebar-container"></div>
+<body>
+  <div class="page">
+    <header class="page__header">
+      <h1>KP-2-5</h1>
+      <p><code></code><code></code>.</p>
+    </header>
 
-    <!-- Контейнер для основної області -->
-    <div class="chat-area p-4 flex flex-col">
-      <!-- Контейнер для логіну -->
-      <div id="login-container"></div>
-      <!-- Місце під майбутній чат -->
-      <div id="chat-area" class="mt-6"></div>
-    </div>
+    <main class="page__main">
+      <!-- Контейнер для Sidebar -->
+      <aside id="sidebar-root" class="sidebar-root"></aside>
+
+      <!-- Основна частина сторінки: тут форма логіну/кабінет -->
+      <section class="content">
+        <div id="login-root"></div>
+      </section>
+    </main>
   </div>
 
-  <!-- Завантаження компонентів (універсально: Electron або браузер) -->
+  <!-- Скрипти компонентів -->
+  <script src="./sidebar/sidebar.js"></script>
+  <script src="./login/login.js"></script>
+
   <script>
-    async function loadPart(relPath, targetId) {
-      const hostEl = document.getElementById(targetId);
-      try {
-        // Якщо є preload API (Electron) — читаємо з диска
-        if (window.components?.load) {
-          const html = await window.components.load(relPath);
-          hostEl.innerHTML = html;
-        } else {
-          // Інакше — звичайний fetch (браузер / http-сервер)
-          const res = await fetch(relPath);
-          hostEl.innerHTML = await res.text();
-        }
-        // Переініціалізуємо вставлений DOM для Alpine
-        if (window.Alpine?.initTree) window.Alpine.initTree(hostEl);
-      } catch (e) {
-        console.error('Component load error:', relPath, e);
-        hostEl.innerHTML = `<div class="p-3 bg-red-50 text-red-700 rounded">Failed to load ${relPath}</div>`;
-      }
-    }
+    // Глобальний об'єкт стану авторизації, щоб компоненти могли перевіряти токен/ID
+    window.AppAuth = { accessToken: '', userId: '' };
 
+    // Підвантаження HTML компонентів + ініціалізація
     document.addEventListener('DOMContentLoaded', async () => {
-      await loadPart('./login/login.html', 'login-container');
-      await loadPart('./sidebar/sidebar.html', 'sidebar-container');
+      // Sidebar
+      const sidebarHost = document.getElementById('sidebar-root');
+      try {
+        const s = await fetch('./sidebar/sidebar.html');
+        sidebarHost.innerHTML = await s.text();
+        if (window.Sidebar?.init) window.Sidebar.init(sidebarHost);
+      } catch (e) {
+        sidebarHost.innerHTML = '<div class="sidebar__error">Не вдалося завантажити sidebar.</div>';
+        console.error('Sidebar load error:', e);
+      }
+
+      // Login
+      const loginHost = document.getElementById('login-root');
+      try {
+        const l = await fetch('./login/login.html');
+        loginHost.innerHTML = await l.text();
+        if (window.Login?.init) window.Login.init(loginHost, {
+          onAuth: ({ accessToken, userId }) => {
+            // оновлюємо глобальний стан
+            window.AppAuth.accessToken = accessToken;
+            window.AppAuth.userId = userId;
+            // можна сповістити інші компоненти
+            document.dispatchEvent(new CustomEvent('auth:success', { detail: { accessToken, userId } }));
+          },
+          onLogout: () => {
+            window.AppAuth.accessToken = '';
+            window.AppAuth.userId = '';
+            document.dispatchEvent(new CustomEvent('auth:logout'));
+          }
+        });
+      } catch (e) {
+        loginHost.innerHTML = '<div class="login__error">Не вдалося завантажити форму авторизації.</div>';
+        console.error('Login load error:', e);
+      }
     });
-
-    // Стан і методи (завдання вимагає ці поля та login/createRoom/fetchRoomsWithNames)
-    function chatApp() {
-      return {
-        username: '',
-        password: '',
-        accessToken: '',
-        userId: '',
-        roomId: '',
-        joinRoomId: '',
-        newRoomName: '',
-        newRoomId: '',
-        rooms: [],
-        messages: [],
-        newMessage: '',
-        inviteUser: '',
-        error: '',
-        lastSyncToken: '',
-
-        // Методи з компонентів:
-        login,              // ./login/login.js
-        createRoom,         // ./sidebar/sidebar.js
-        fetchRoomsWithNames // ./sidebar/sidebar.js
-      };
-    }
   </script>
 </body>
 </html>

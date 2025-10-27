@@ -1,16 +1,29 @@
-<template x-if="!accessToken">
-  <div>
-    <h2 class="text-xl font-bold mb-4">Login</h2>
-    <input x-model="username" placeholder="Username (e.g., @user:matrix.org)" class="border p-2 w-full mb-2 rounded">
-    <input x-model="password" type="password" placeholder="Password" class="border p-2 w-full mb-2 rounded">
-    <button @click="login()" class="bg-blue-500 text-white p-2 w-full rounded hover:bg-blue-600 transition">Login</button>
-    <p x-text="error" class="text-red-500 mt-2"></p>
-  </div>
-</template>
+<div class="login">
+  <h2 class="login__title">Matrix — Авторизація</h2>
 
-<template x-if="accessToken">
-  <div class="p-4 bg-gray-50 rounded border">
-    <div class="text-sm text-gray-600 mb-1 font-medium">Your Matrix ID</div>
-    <div class="text-gray-900 break-words font-mono" x-text="userId ? userId : 'Loading...'"></div>
+  <div class="login__form" id="login-form">
+    <label class="login__label">Matrix ID або логін</label>
+    <input id="login-username" class="login__input" placeholder="@user:matrix.org або user" autocomplete="username" />
+
+    <label class="login__label">Пароль</label>
+    <input id="login-password" class="login__input" type="password" placeholder="Пароль" autocomplete="current-password" />
+
+    <button id="login-submit" class="login__btn">Увійти</button>
+    <div id="login-error" class="login__error"></div>
   </div>
-</template>
+
+  <div class="login__panel" id="login-panel" style="display:none">
+    <div class="login__row">
+      <div>
+        <h3 class="login__subtitle">Ви авторизувались</h3>
+        <div class="login__meta"><span class="muted">Matrix ID:</span> <span id="login-userid" class="mono"></span></div>
+        <div class="login__meta"><span class="muted">Token:</span> <span id="login-token" class="mono"></span></div>
+      </div>
+      <div class="login__actions">
+        <button id="login-copy" class="login__btn">Скопіювати токен</button>
+        <button id="login-logout" class="login__btn login__btn--ghost">Вийти</button>
+      </div>
+    </div>
+    <div id="login-copy-msg" class="muted" style="margin-top:6px"></div>
+  </div>
+</div>
