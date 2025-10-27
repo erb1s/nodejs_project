@@ -1,0 +1,16 @@
+<template x-if="!accessToken">
+  <div>
+    <h2 class="text-xl font-bold mb-4">Login</h2>
+    <input x-model="username" placeholder="Username (e.g., @user:matrix.org)" class="border p-2 w-full mb-2 rounded">
+    <input x-model="password" type="password" placeholder="Password" class="border p-2 w-full mb-2 rounded">
+    <button @click="login()" class="bg-blue-500 text-white p-2 w-full rounded hover:bg-blue-600 transition">Login</button>
+    <p x-text="error" class="text-red-500 mt-2"></p>
+  </div>
+</template>
+
+<template x-if="accessToken">
+  <div class="p-4 bg-gray-50 rounded border">
+    <div class="text-sm text-gray-600 mb-1 font-medium">Your Matrix ID</div>
+    <div class="text-gray-900 break-words font-mono" x-text="userId ? userId : 'Loading...'"></div>
+  </div>
+</template>

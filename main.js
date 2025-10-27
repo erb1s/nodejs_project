@@ -1,39 +1,22 @@
 // main.js
-// Імпортуємо модулі 'app' (керує життєвим циклом)
-// та 'BrowserWindow' (створює вікна)
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
-// Функція для створення вікна
-const createWindow = () => {
-  // Створюємо нове вікно браузера
+function createWindow () {
   const win = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1100,
+    height: 800,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js') // якщо потрібно
+      contextIsolation: true,      // ВАЖЛИВО
+      nodeIntegration: false,      // ВАЖЛИВО
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
-  // Завантажуємо файл index.html у це вікно
   win.loadFile('index.html');
-};
+  // win.webContents.openDevTools(); // розкоментуй на час дебагу
+}
 
-// Викликаємо функцію createWindow(), коли Electron готовий
-app.whenReady().then(() => {
-  createWindow();
-
-  // Для macOS: відкриваємо нове вікно, якщо немає відкритих
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
-});
-
-// Закриваємо додаток, коли всі вікна закриті
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
-});
+app.whenReady().then(createWindow);
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
