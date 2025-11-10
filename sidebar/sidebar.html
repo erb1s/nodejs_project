@@ -1,12 +1,28 @@
-<div class="sidebar">
-  <h2 class="sidebar__title">Rooms</h2>
+<!-- sidebar/sidebar.html -->
+<div class="sidebar p-4 bg-gray-50 border-r border-gray-200 overflow-y-auto">
+  <h2 class="text-xl font-bold mb-4">Rooms</h2>
 
-  <div class="sidebar__list" id="sidebar-list"></div>
+  <!-- Список кімнат -->
+  <div class="room-list space-y-1 px-4">
+    <ul class="sidebar-list" id="rooms-list">
+      <!-- Рендериться у sidebar.js -->
+    </ul>
+  </div>
 
-  <div class="sidebar__new">
-    <label class="sidebar__label" for="sidebar-room-name">Нова кімната</label>
-    <input id="sidebar-room-name" class="sidebar__input" placeholder="Назва кімнати" />
-    <button id="sidebar-create" class="sidebar__btn">Create Room</button>
-    <div id="sidebar-created" class="sidebar__hint"></div>
+  <!-- Створення кімнати -->
+  <div class="mt-4">
+    <input id="new-room-name" placeholder="New room name" class="border p-2 w-full mb-2 rounded">
+    <button id="create-room-btn" class="bg-indigo-500 text-white p-2 w-full rounded hover:bg-indigo-600 transition">
+      Create Room
+    </button>
+    <p id="new-room-id" class="text-sm text-gray-600 mt-1" hidden>Room ID: <span></span></p>
+  </div>
+
+  <!-- Учасники активної кімнати -->
+  <div id="members-block" class="mt-6 p-4 bg-gray-100 rounded-lg" hidden>
+    <h3 class="text-sm font-semibold text-gray-700 mb-2">Members</h3>
+    <ul id="members-list" class="text-sm space-y-1">
+      <!-- Рендериться у sidebar.js -->
+    </ul>
   </div>
 </div>

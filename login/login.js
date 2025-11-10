@@ -29,6 +29,31 @@
     panelEl.style.display = '';
   }
 
+  // --- ДОДАНО: керування відображенням Room ID
+  function setRoomId(roomId) {
+    const el  = document.getElementById('room-id-value');
+    const btn = document.getElementById('copy-room-id');
+    const msg = document.getElementById('room-id-copy-msg');
+    if (!el || !btn) return;
+
+    if (roomId && typeof roomId === 'string') {
+      el.textContent = roomId;
+      btn.disabled = false;
+      btn.onclick = async () => {
+        try {
+          await navigator.clipboard.writeText(roomId);
+          if (msg) { msg.textContent = 'Room ID скопійовано'; setTimeout(() => msg.textContent = '', 1200); }
+        } catch {}
+      };
+      el.onclick  = btn.onclick;
+    } else {
+      el.textContent = 'Not selected';
+      btn.disabled = true;
+      btn.onclick = null;
+      if (msg) msg.textContent = '';
+    }
+  }
+
   function init(host, { onAuth, onLogout } = {}) {
     const $form     = host.querySelector('#login-form');
     const $user     = host.querySelector('#login-username');
@@ -45,6 +70,7 @@
 
     // стартовий стан
     showLogin($form, $panel);
+    setRoomId(''); // поки не вибрано
 
     $submit.addEventListener('click', async () => {
       $submit.disabled = true;
@@ -86,8 +112,27 @@
       $pass.value = '';
       $token.textContent = '';
       $userid.textContent = '';
+      setRoomId('');
       showLogin($form, $panel);
       if (typeof onLogout === 'function') onLogout();
+    });
+
+    // --- ДОДАНО: оновлюємо Room ID при зміні кімнати
+    document.addEventListener('room:changed', (e) => {
+      const roomId = e?.detail?.roomId || '';
+      if (!window.AppAuth) window.AppAuth = {};
+      window.AppAuth.currentRoomId = roomId;
+      setRoomId(roomId);
+    });
+
+    // --- ДОДАНО: після логіну підхопити активну кімнату (якщо Sidebar вже є)
+    document.addEventListener('auth:success', () => {
+      try {
+        const initial = window.Sidebar?.getCurrentRoomId ? window.Sidebar.getCurrentRoomId() : '';
+        setRoomId(initial || '');
+      } catch {
+        setRoomId('');
+      }
     });
   }
 

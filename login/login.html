@@ -18,6 +18,14 @@
         <h3 class="login__subtitle">Ви авторизувались</h3>
         <div class="login__meta"><span class="muted">Matrix ID:</span> <span id="login-userid" class="mono"></span></div>
         <div class="login__meta"><span class="muted">Token:</span> <span id="login-token" class="mono"></span></div>
+
+        <!-- ДОДАНО: Поточний Room ID -->
+        <div class="login__meta" style="margin-top:6px;">
+          <span class="muted">Room ID:</span>
+          <code id="room-id-value" class="mono copyable">Not selected</code>
+          <button id="copy-room-id" class="login__btn login__btn--ghost" style="margin-left:6px;" disabled>Копіювати</button>
+        </div>
+        <div id="room-id-copy-msg" class="muted" style="margin-top:4px;"></div>
       </div>
       <div class="login__actions">
         <button id="login-copy" class="login__btn">Скопіювати токен</button>

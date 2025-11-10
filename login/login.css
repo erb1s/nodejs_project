@@ -23,3 +23,10 @@
 
 .muted { color: #6b7280; font-size: 12px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; word-break: break-all; }
+
+#login-container {
+  width: 400px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 20px;
+}

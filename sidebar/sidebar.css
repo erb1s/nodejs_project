@@ -42,3 +42,28 @@
 .sidebar__btn:hover { background: #1d4ed8; }
 .sidebar__hint { font-size: 12px; color: #6b7280; }
 .sidebar__error { color: #b91c1c; background: #fee2e2; padding: 8px; border-radius: 8px; }
+
+.sidebar-list {
+  height: 76vh;
+  overflow-y: auto;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.sidebar-list li {
+  padding: 8px;
+  transition: background-color 0.2s;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.sidebar-list li:hover { background-color: #e0e7ff; }
+.sidebar-list li.active {
+  background-color: #bfdbfe;
+  font-weight: 600;
+}
+.sidebar-list {
+    height: 76vh;
+    overflow-y: scroll;
+}

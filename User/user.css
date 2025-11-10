@@ -1,0 +1,5 @@
+/* Базове оформлення правого сайдбару (User) */
+.user-root .sidebar { min-height: calc(100vh - 120px); }
+#room-members { list-style: none; margin: 0; padding: 0; }
+#room-members li { display: flex; align-items: center; gap: 8px; }
+#room-members li span:first-child { font-weight: 600; }

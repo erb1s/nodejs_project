@@ -1,0 +1,31 @@
+<div class="chat">
+  <!-- Поточний користувач / кімната -->
+  <div class="chat__status">
+    <div>
+      <strong>Your Matrix ID:</strong>
+      <span id="chat-user-id">—</span>
+    </div>
+    <div>
+      <strong>Room ID:</strong>
+      <span id="chat-room-id" class="pill" title="Click to copy">Not selected</span>
+      <small class="muted">(click to copy)</small>
+    </div>
+  </div>
+<!-- Повідомлення -->
+  <div class="chat__messages">
+    <div class="chat__messages-head">
+      <strong>Messages</strong>
+      <button id="chat-refresh" class="btn btn--light">Sync now</button>
+    </div>
+    <div id="chat-messages" class="messages"></div>
+  </div>
+
+  <!-- Ввід повідомлення -->
+  <div class="chat__composer">
+    <textarea id="chat-input" class="input input--area" placeholder="Type your message..."></textarea>
+    <button id="chat-send" class="btn btn--primary">Send</button>
+  </div>
+
+  <!-- Повідомлення про помилки -->
+  <div id="chat-error" class="error" hidden></div>
+</div>
