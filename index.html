@@ -5,76 +5,118 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Project-kp-2-5</title>
 
-  <!-- ОКРЕМІ стилі сторінки -->
+  <!-- Сторінкові стилі -->
   <link rel="stylesheet" href="./index.css" />
 
-  <!-- ОКРЕМІ стилі компонентів -->
+  <!-- Стилі компонентів -->
   <link rel="stylesheet" href="./sidebar/sidebar.css" />
   <link rel="stylesheet" href="./login/login.css" />
+  <link rel="stylesheet" href="./chat/chat.css" />
+  <link rel="stylesheet" href="./user/user.css" />
+
+  <!-- Скрипти компонентів -->
+  <script src="./sidebar/sidebar.js" defer></script>
+  <script src="./login/login.js" defer></script>
+  <script src="./chat/chat.js" defer></script>
+  <script src="./user/user.js" defer></script>
 </head>
 
-<body>
+<body class="index-container">
   <div class="page">
     <header class="page__header">
-      <h1>KP-2-5</h1>
-      <p><code></code><code></code>.</p>
+      <h1></h1>
+      <p><code>Matrix</code></p>
     </header>
 
     <main class="page__main">
-      <!-- Контейнер для Sidebar -->
+      <!-- Ліва колонка: Rooms -->
       <aside id="sidebar-root" class="sidebar-root"></aside>
 
-      <!-- Основна частина сторінки: тут форма логіну/кабінет -->
+      <!-- Центральна колонка: Login + Chat -->
       <section class="content">
+        <!-- Форма логіну / кабінет -->
         <div id="login-root"></div>
+
+        <!-- Контейнер для чату -->
+        <div id="chat-container" class="chat-container"></div>
       </section>
+
+      <!-- Права колонка: Users -->
+      <aside id="user-root" class="user-root"></aside>
     </main>
   </div>
 
-  <!-- Скрипти компонентів -->
-  <script src="./sidebar/sidebar.js"></script>
-  <script src="./login/login.js"></script>
-
   <script>
-    // Глобальний об'єкт стану авторизації, щоб компоненти могли перевіряти токен/ID
+    // Глобальний об'єкт авторизації (загальний для всіх компонентів)
     window.AppAuth = { accessToken: '', userId: '' };
 
-    // Підвантаження HTML компонентів + ініціалізація
-    document.addEventListener('DOMContentLoaded', async () => {
-      // Sidebar
-      const sidebarHost = document.getElementById('sidebar-root');
-      try {
-        const s = await fetch('./sidebar/sidebar.html');
-        sidebarHost.innerHTML = await s.text();
-        if (window.Sidebar?.init) window.Sidebar.init(sidebarHost);
-      } catch (e) {
-        sidebarHost.innerHTML = '<div class="sidebar__error">Не вдалося завантажити sidebar.</div>';
-        console.error('Sidebar load error:', e);
+    // Допоміжний завантажувач HTML-фрагментів
+    async function loadFragment(path) {
+      // Якщо працюєш через Electron preload -> безпечний API
+      if (window.components?.load) {
+        return await window.components.load(path);
       }
+      // Якщо просто з веб-сервера -> стандартний fetch
+      const res = await fetch(path);
+      return await res.text();
+    }
 
-      // Login
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1) Спочатку показуємо тільки LOGIN
       const loginHost = document.getElementById('login-root');
       try {
-        const l = await fetch('./login/login.html');
-        loginHost.innerHTML = await l.text();
-        if (window.Login?.init) window.Login.init(loginHost, {
-          onAuth: ({ accessToken, userId }) => {
-            // оновлюємо глобальний стан
-            window.AppAuth.accessToken = accessToken;
-            window.AppAuth.userId = userId;
-            // можна сповістити інші компоненти
-            document.dispatchEvent(new CustomEvent('auth:success', { detail: { accessToken, userId } }));
-          },
-          onLogout: () => {
-            window.AppAuth.accessToken = '';
-            window.AppAuth.userId = '';
-            document.dispatchEvent(new CustomEvent('auth:logout'));
-          }
-        });
+        loginHost.innerHTML = await loadFragment('./login/login.html');
+        if (window.Login?.init) {
+          window.Login.init(loginHost, {
+            onAuth: ({ accessToken, userId }) => {
+              window.AppAuth.accessToken = accessToken;
+              window.AppAuth.userId = userId;
+              document.dispatchEvent(new CustomEvent('auth:success', { detail: { accessToken, userId } }));
+            },
+            onLogout: () => {
+              window.AppAuth.accessToken = '';
+              window.AppAuth.userId = '';
+              document.dispatchEvent(new CustomEvent('auth:logout'));
+            }
+          });
+        }
       } catch (e) {
         loginHost.innerHTML = '<div class="login__error">Не вдалося завантажити форму авторизації.</div>';
         console.error('Login load error:', e);
       }
+
+      // 2) Після успішного логіну вантажимо Sidebar/Chat/User
+      document.addEventListener('auth:success', async () => {
+        // SIDEBAR
+        const sidebarHost = document.getElementById('sidebar-root');
+        try {
+          sidebarHost.innerHTML = await loadFragment('./sidebar/sidebar.html');
+          if (window.Sidebar?.init) window.Sidebar.init(sidebarHost);
+        } catch (e) {
+          sidebarHost.innerHTML = '<div class="sidebar__error">Не вдалося завантажити sidebar.</div>';
+          console.error('Sidebar load error:', e);
+        }
+
+        // CHAT
+        const chatHost = document.getElementById('chat-container');
+        try {
+          chatHost.innerHTML = await loadFragment('./chat/chat.html');
+          if (window.Chat?.init) window.Chat.init(chatHost);
+        } catch (e) {
+          chatHost.innerHTML = '<div class="chat__error">Не вдалося завантажити чат.</div>';
+          console.error('Chat load error:', e);
+        }
+
+        // USER
+        const userHost = document.getElementById('user-root');
+        try {
+          userHost.innerHTML = await loadFragment('./user/user.html');
+          if (window.User?.init) window.User.init(userHost);
+        } catch (e) {
+          userHost.innerHTML = '<div class="user__error">Не вдалося завантажити user.</div>';
+          console.error('User load error:', e);
+        }
+      });
     });
   </script>
 </body>
