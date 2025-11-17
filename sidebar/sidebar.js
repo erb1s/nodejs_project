@@ -1,7 +1,3 @@
-// sidebar/sidebar.js
-// Працює з index.html, який після auth:success підвантажує цей фрагмент і викликає Sidebar.init(host).
-// Виконує ТЗ: створення кімнат, видалення (leave), показ учасників, kick користувача.
-
 (function () {
   const API_BASE = 'https://matrix.org/_matrix/client';
   const VERS = 'r0';
@@ -9,14 +5,21 @@
 
   function authHeader() {
     const token = window.AppAuth?.accessToken || '';
-    return { 'Authorization': 'Bearer ' + token };
+    return { 
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json'
+    };
   }
+
   function hasAuth() {
     return Boolean(window.AppAuth?.accessToken);
   }
 
   async function apiJson(url, opts = {}) {
-    const res = await fetch(url, opts);
+    const res = await fetch(url, {
+      ...opts,
+      headers: { ...authHeader(), ...opts.headers }
+    });
     let data = {};
     try { data = await res.json(); } catch (_) {}
     return { res, data };
@@ -25,198 +28,263 @@
   // ---------- РЕНДЕР ----------
   function renderRooms(host, state) {
     const list = host.querySelector('#rooms-list');
+    if (!list) return;
+    
     list.innerHTML = '';
+
+    if (state.rooms.length === 0) {
+      list.innerHTML = '<div class="text-gray-500 text-sm text-center py-4">Немає активних кімнат</div>';
+      return;
+    }
 
     state.rooms.forEach(room => {
       const li = document.createElement('li');
-      li.className = 'flex items-center justify-between rounded-lg p-2 cursor-pointer hover:bg-indigo-50';
-      if (room.roomId === state.roomId) li.classList.add('active');
-
-      // назва
+      li.className = 'sidebar__room' + (room.roomId === state.roomId ? ' sidebar__room--active' : '');
+      
       const nameSpan = document.createElement('span');
-      nameSpan.className = 'flex-1 truncate';
+      nameSpan.className = 'room-name';
       nameSpan.textContent = room.name || room.roomId;
+      nameSpan.title = room.roomId;
 
-      // кнопка leave
-      const btn = document.createElement('button');
-      btn.className = 'ml-2 text-red-500 hover:text-red-700 text-xs font-medium';
-      btn.title = 'Leave room';
-      btn.textContent = '× Delete';
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.textContent = 'Видалити';
+      deleteBtn.title = 'Покинути кімнату';
 
-      li.addEventListener('click', () => switchRoom(host, state, room.roomId));
-      btn.addEventListener('click', (e) => {
+      li.appendChild(nameSpan);
+      li.appendChild(deleteBtn);
+      list.appendChild(li);
+
+      // Обробники подій
+      li.addEventListener('click', (e) => {
+        if (e.target !== deleteBtn) {
+          switchRoom(host, state, room.roomId);
+        }
+      });
+
+      deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         leaveRoom(host, state, room.roomId);
       });
-
-      li.appendChild(nameSpan);
-      li.appendChild(btn);
-      list.appendChild(li);
     });
   }
 
   function renderMembers(host, state) {
     const block = host.querySelector('#members-block');
     const list = host.querySelector('#members-list');
-    if (!state.roomId) {
-      block.hidden = true;
-      list.innerHTML = '';
+    
+    if (!state.roomId || state.members.length === 0) {
+      if (block) block.hidden = true;
       return;
     }
+
     block.hidden = false;
     list.innerHTML = '';
 
-    state.members.forEach(m => {
+    state.members.forEach(member => {
       const li = document.createElement('li');
-      li.className = 'flex items-center justify-between bg-white p-2 rounded border';
+      li.className = 'member-item';
 
-      const left = document.createElement('div');
-      left.innerHTML = `<span class="font-medium">${m.displayName || m.userId}</span>
-                        <span class="text-gray-500 ml-1">${'(' + m.userId.split(':')[0].substring(1) + ')'}</span>`;
+      const infoDiv = document.createElement('div');
+      infoDiv.className = 'member-info';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'member-name';
+      nameSpan.textContent = member.displayName || member.userId;
+
+      const idSpan = document.createElement('span');
+      idSpan.className = 'member-id';
+      idSpan.textContent = member.userId;
 
       const kickBtn = document.createElement('button');
-      kickBtn.className = 'text-red-600 hover:text-red-800 text-xs font-bold';
-      kickBtn.title = 'Kick user';
-      kickBtn.textContent = '×';
-      kickBtn.addEventListener('click', () => kickUser(host, state, m.userId));
+      kickBtn.className = 'kick-btn';
+      kickBtn.textContent = 'Видалити';
+      kickBtn.title = 'Виключити з кімнати';
 
-      li.appendChild(left);
+      infoDiv.appendChild(nameSpan);
+      infoDiv.appendChild(idSpan);
+      li.appendChild(infoDiv);
       li.appendChild(kickBtn);
       list.appendChild(li);
+
+      kickBtn.addEventListener('click', () => {
+        kickUser(host, state, member.userId);
+      });
     });
   }
 
-  // ---------- API ДІЇ ----------
+  // ---------- API ФУНКЦІЇ ----------
   async function fetchRoomsWithNames(state) {
     if (!hasAuth()) return;
-    const { res, data } = await apiJson(`${API_BASE}/${VERS}/joined_rooms`, {
-      headers: authHeader()
-    });
-    if (!res.ok) return;
+    
+    try {
+      const { res, data } = await apiJson(`${API_BASE}/${VERS}/joined_rooms`);
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch rooms');
 
-    const out = [];
-    for (const id of (data.joined_rooms || [])) {
-      let name = '';
-      try {
-        const r2 = await fetch(`${API_BASE}/${VERS}/rooms/${enc(id)}/state/m.room.name`, {
-          headers: authHeader()
-        });
-        if (r2.ok) {
-          const j = await r2.json();
-          name = j?.name || '';
-        }
-      } catch(_) {}
-      out.push({ roomId: id, name });
-    }
-    state.rooms = out;
-
-    // якщо активної кімнати більше немає — скинемо
-    if (state.roomId && !out.find(r => r.roomId === state.roomId)) {
-      state.roomId = '';
-      state.members = [];
+      const rooms = [];
+      for (const id of (data.joined_rooms || [])) {
+        let name = id;
+        try {
+          const roomRes = await fetch(`${API_BASE}/${VERS}/rooms/${enc(id)}/state/m.room.name`, {
+            headers: authHeader()
+          });
+          if (roomRes.ok) {
+            const roomData = await roomRes.json();
+            name = roomData?.name || id;
+          }
+        } catch (_) {}
+        rooms.push({ roomId: id, name });
+      }
+      
+      state.rooms = rooms;
+      
+      // Якщо активної кімнати більше немає - скидаємо
+      if (state.roomId && !rooms.find(r => r.roomId === state.roomId)) {
+        state.roomId = '';
+        state.members = [];
+      }
+    } catch (error) {
+      console.error('Error fetching rooms:', error);
     }
   }
 
   async function createRoom(host, state) {
     const input = host.querySelector('#new-room-name');
-    const val = (input.value || '').trim();
-    if (!val || !hasAuth()) return;
+    const name = (input?.value || '').trim();
+    
+    if (!name || !hasAuth()) {
+      alert('Будь ласка, введіть назву кімнати');
+      return;
+    }
 
-    const { res, data } = await apiJson(`${API_BASE}/${VERS}/createRoom`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeader() },
-      body: JSON.stringify({ name: val })
-    });
+    try {
+      const { res, data } = await apiJson(`${API_BASE}/${VERS}/createRoom`, {
+        method: 'POST',
+        body: JSON.stringify({ name })
+      });
 
-    if (res.ok) {
-      input.value = '';
-      await fetchRoomsWithNames(state);
-      if (data.room_id) {
+      if (res.ok && data.room_id) {
+        input.value = '';
+        await fetchRoomsWithNames(state);
         await switchRoom(host, state, data.room_id);
-        const rid = host.querySelector('#new-room-id');
-        rid.hidden = false;
-        rid.querySelector('span').textContent = data.room_id;
+        
+        // Показуємо ID нової кімнати
+        const ridElement = host.querySelector('#new-room-id');
+        if (ridElement) {
+          ridElement.hidden = false;
+          ridElement.querySelector('span').textContent = data.room_id;
+          setTimeout(() => ridElement.hidden = true, 5000);
+        }
+        
+        renderRooms(host, state);
+        alert('Кімната успішно створена!');
+      } else {
+        throw new Error(data.error || 'Помилка створення кімнати');
       }
-      renderRooms(host, state);
-    } else {
-      alert('Failed to create room: ' + (data.error || 'Error'));
+    } catch (error) {
+      alert('Помилка: ' + error.message);
     }
   }
 
   async function leaveRoom(host, state, roomId) {
     if (!hasAuth() || !roomId) return;
-    if (!confirm('Leave (delete from my list) this room?')) return;
+    
+    if (!confirm('Ви впевнені, що хочете покинути цю кімнату?')) {
+      return;
+    }
 
-    const { res, data } = await apiJson(`${API_BASE}/${VERS}/rooms/${enc(roomId)}/leave`, {
-      method: 'POST',
-      headers: authHeader()
-    });
-    if (res.ok) {
-      state.rooms = state.rooms.filter(r => r.roomId !== roomId);
-      if (state.roomId === roomId) {
-        state.roomId = '';
-        state.members = [];
-        // повідомимо інші компоненти
-        document.dispatchEvent(new CustomEvent('room:selected', { detail: { roomId: '' } }));
+    try {
+      const { res, data } = await apiJson(`${API_BASE}/${VERS}/rooms/${enc(roomId)}/leave`, {
+        method: 'POST'
+      });
+
+      if (res.ok) {
+        // Оновлюємо стан
+        state.rooms = state.rooms.filter(r => r.roomId !== roomId);
+        if (state.roomId === roomId) {
+          state.roomId = '';
+          state.members = [];
+        }
+        
+        // Оновлюємо UI
+        await fetchRoomsWithNames(state);
+        renderRooms(host, state);
+        renderMembers(host, state);
+        
+        alert('Кімнату успішно покинуто');
+      } else {
+        throw new Error(data.error || 'Помилка виходу з кімнати');
       }
-      await fetchRoomsWithNames(state);
-      renderRooms(host, state);
-      renderMembers(host, state);
-      alert('Room left.');
-    } else {
-      console.error('leave failed:', data);
-      alert('Cannot leave room: ' + (data.error || 'Unknown error'));
+    } catch (error) {
+      alert('Помилка: ' + error.message);
     }
   }
 
   async function switchRoom(host, state, roomId) {
     if (!roomId) return;
+    
     state.roomId = roomId;
     await fetchRoomMembers(state);
     renderRooms(host, state);
     renderMembers(host, state);
-    // повідомляємо чат/юзер компоненти
-    document.dispatchEvent(new CustomEvent('room:selected', { detail: { roomId } }));
+    
+    // Сповіщаємо інші компоненти про зміну кімнати
+    document.dispatchEvent(new CustomEvent('room:changed', { 
+      detail: { roomId } 
+    }));
   }
 
   async function fetchRoomMembers(state) {
     if (!hasAuth() || !state.roomId) return;
-    const { res, data } = await apiJson(`${API_BASE}/${VERS}/rooms/${enc(state.roomId)}/members?at=`, {
-      headers: authHeader()
-    });
-    if (!res.ok) {
+    
+    try {
+      const { res, data } = await apiJson(
+        `${API_BASE}/${VERS}/rooms/${enc(state.roomId)}/joined_members`
+      );
+
+      if (res.ok) {
+        state.members = Object.entries(data.joined || {}).map(([userId, info]) => ({
+          userId,
+          displayName: info.display_name || userId
+        }));
+      } else {
+        state.members = [];
+      }
+    } catch (error) {
+      console.error('Error fetching members:', error);
       state.members = [];
-      return;
     }
-    state.members = (data.chunk || [])
-      .filter(ev => ev.type === 'm.room.member' && ev.content?.membership === 'join')
-      .map(ev => ({ userId: ev.state_key, displayName: ev.content?.displayname || ev.state_key }));
   }
 
   async function kickUser(host, state, userId) {
     if (!hasAuth() || !state.roomId || !userId) return;
-    if (!confirm(`Kick ${userId} from room?`)) return;
+    
+    if (!confirm(`Видалити користувача ${userId} з кімнати?`)) {
+      return;
+    }
 
-    const { res, data } = await apiJson(
-      `${API_BASE}/${VERS}/rooms/${enc(state.roomId)}/kick`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeader() },
-        body: JSON.stringify({ user_id: userId })
+    try {
+      const { res, data } = await apiJson(
+        `${API_BASE}/${VERS}/rooms/${enc(state.roomId)}/kick`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ user_id: userId })
+        }
+      );
+
+      if (res.ok) {
+        state.members = state.members.filter(m => m.userId !== userId);
+        renderMembers(host, state);
+        alert('Користувача успішно видалено');
+      } else {
+        throw new Error(data.error || 'Помилка видалення користувача');
       }
-    );
-
-    if (res.ok) {
-      state.members = state.members.filter(m => m.userId !== userId);
-      renderMembers(host, state);
-      alert(`User ${userId} kicked.`);
-    } else {
-      console.error('kick failed:', data);
-      alert('Cannot kick: ' + (data.error || 'Unknown error'));
+    } catch (error) {
+      alert('Помилка: ' + error.message);
     }
   }
 
-  // ---------- ПУБЛІЧНИЙ API КОМПОНЕНТА ----------
+  // ---------- ПУБЛІЧНИЙ API ----------
   window.Sidebar = {
     init(host) {
       const state = {
@@ -225,25 +293,33 @@
         members: []
       };
 
-      // кнопки/інпут
+      // Прив'язка подій
       const createBtn = host.querySelector('#create-room-btn');
-      const input = host.querySelector('#new-room-name');
+      const nameInput = host.querySelector('#new-room-name');
 
-      createBtn.addEventListener('click', () => createRoom(host, state));
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') createRoom(host, state);
-      });
+      if (createBtn) {
+        createBtn.addEventListener('click', () => createRoom(host, state));
+      }
 
-      // якщо вже авторизовані — тягнемо кімнати
+      if (nameInput) {
+        nameInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') createRoom(host, state);
+        });
+      }
+
+      // Завантаження початкових даних
       if (hasAuth()) {
         fetchRoomsWithNames(state).then(() => renderRooms(host, state));
       }
 
-      // якщо інші частини апки перепризначили кімнату
-      document.addEventListener('room:force', (e) => {
-        const { roomId } = e.detail || {};
-        if (roomId) switchRoom(host, state, roomId);
+      // Слухач подій авторизації
+      document.addEventListener('auth:success', () => {
+        fetchRoomsWithNames(state).then(() => renderRooms(host, state));
       });
+    },
+    
+    getCurrentRoomId() {
+      return window.Sidebar?.state?.roomId || '';
     }
   };
 })();
